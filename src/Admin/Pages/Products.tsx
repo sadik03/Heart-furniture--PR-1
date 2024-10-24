@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from "react";
-// import { useDispatch, useSelector } from 'react-redux';
-// import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-// import styled from 'styled-components';
+import { useDispatch, useSelector } from "react-redux";
+import { Action, Dispatch } from 'redux';
+import { ThunkAction } from 'redux-thunk';
 
 import AdminNavbar from "../Components/Admin-Navbar";
-// import { getProductDataFromAPI } from "../../UserPage/Utilis/api";
-import { useDispatch, useSelector } from "react-redux";
 import { getProducts } from "../../UserPage/Redux/Admin/action";
 import {
   Box,
@@ -19,24 +17,23 @@ import AdminProductCard from "../Components/Admin_product_card";
 import axios from "axios";
 import { ProductURL } from "../../UserPage/Utilis/api";
 
+// Define your state type for the component
+interface AppState {
+  adminReducer: {
+    products: any[];
+    isLoading: boolean;
+    isError: boolean;
+  };
+}
+
 const Products: React.FC = () => {
-  const dispatch = useDispatch();
-  const { products } = useSelector((store: any) => ({
-    products: store.adminReducer.products,
-    isLoading: store.adminReducer.isLoading,
-    isError: store.adminReducer.isError,
+  const dispatch = useDispatch<Dispatch<ThunkAction<void, AppState, null, Action<string>>>>();
+  const { products } = useSelector((state: AppState) => ({
+    products: state.adminReducer.products,
+    isLoading: state.adminReducer.isLoading,
+    isError: state.adminReducer.isError,
   }));
-  // let newProduct = {
-  //   name: null,
-  //   category: "",
-  //   price: null,
-  //   image: "",
-  //   brand: "",
-  //   size: "",
-  //   color: "",
-  //   material: "",
-  //   rating: "",
-  // };
+
   const initProduct = {
     name: "",
     category: "",
@@ -71,31 +68,28 @@ const Products: React.FC = () => {
       },
     ],
   };
-  let newProd: any;
+
   let [newProduct, setNewProduct] = useState(initProduct);
-  const handleChange = (e: any) => {
-    // console.log(e.target.value);
-    console.log(newProduct);
-    newProd = {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.name === "price" || e.target.name === "rating" ? parseFloat(e.target.value) : e.target.value;
+    setNewProduct({
       ...newProduct,
-      [e.target.name]: e.target.value,
-      // e.target.name === "price" || "rating"
-      //   ? +e.target.value
-      //   :
-    };
-    setNewProduct(newProd);
-    // console.log(newProduct);
-  };
-  const AddProduct = (e: any) => {
-    // setNewProduct(newProd);
-    e.preventDefault();
-    console.log("new prod", newProduct);
-    axios.post(ProductURL, newProduct).then((res) => {
-      console.log(res.data);
-      dispatch(getProducts());
-      setNewProduct(initProduct);
+      [e.target.name]: value,
     });
   };
+
+  const AddProduct = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(ProductURL, newProduct);
+      console.log('Response:', response.data);
+      dispatch(getProducts());
+      setNewProduct(initProduct);
+    } catch (error) {
+      console.error('Error posting new product:', error);
+    }
+  };
+
   useEffect(() => {
     dispatch(getProducts());
   }, [dispatch]);
@@ -106,103 +100,27 @@ const Products: React.FC = () => {
       <Box display={"flex"} justifyContent={"space-around"}>
         <Box w={"20%"}>
           <Stack spacing={4}>
-            <Text textAlign={"center"} fontWeight={"bold"} mb={2} fontSize={"25"} color={"#0b3954"} >ADD NEW PRODUCT</Text>
-            <Input
-              variant="filled"
-              placeholder="Name"
-              type="text"
-              name="name"
-              // value={newProduct.name}
-              onChange={handleChange}
-            />
-            <Input
-              variant="filled"
-              placeholder="Category"
-              type="text"
-              name="category"
-              onChange={handleChange}
-              value={newProduct.category}
-            />
-            <Input
-              variant="filled"
-              placeholder="Price"
-              type="number"
-              name="price"
-              value={newProduct.price}
-              onChange={handleChange}
-            />
-            <Input
-              variant="filled"
-              placeholder="Image"
-              type="url"
-              name="image"
-              value={newProduct.image}
-              onChange={handleChange}
-            />
-            <Input
-              variant="filled"
-              placeholder="Brand"
-              type="text"
-              name="brand"
-              value={newProduct.brand}
-              onChange={handleChange}
-            />
-            <Input
-              variant="filled"
-              placeholder="Size"
-              type="text"
-              name="size"
-              value={newProduct.size}
-              onChange={handleChange}
-            />
-            <Input
-              variant="filled"
-              placeholder="Color"
-              type="text"
-              name="color"
-              value={newProduct.color}
-              onChange={handleChange}
-            />
-            <Input
-              variant="filled"
-              placeholder="Material"
-              type="text"
-              name="material"
-              value={newProduct.material}
-              onChange={handleChange}
-            />
-            <Input
-              variant="filled"
-              placeholder="About"
-              type="text"
-              name="about"
-              value={newProduct.about}
-              onChange={handleChange}
-            />
-            <Input
-              variant="filled"
-              placeholder="Rating"
-              type="number"
-              name="rating"
-              value={newProduct.rating}
-              onChange={handleChange}
-            />
-            <Button  bg={"#0b3954"}
-          m={"20px 5px"} color={"white"}
-          _hover={{bg:"#e89f22"}} onClick={AddProduct}>
+            <Text textAlign={"center"} fontWeight={"bold"} mb={2} fontSize={"25"} color={"#0b3954"}>ADD NEW PRODUCT</Text>
+            {Object.entries(initProduct).filter(([key]) => key !== "reviews").map(([key, value]) => (
+              <Input
+                key={key}
+                variant="filled"
+                placeholder={key.charAt(0).toUpperCase() + key.slice(1)}
+                type={key === "price" || key === "rating" ? "number" : "text"}
+                name={key}
+                value={newProduct[key]}
+                onChange={handleChange}
+              />
+            ))}
+            <Button bg={"#0b3954"} m={"20px 5px"} color={"white"} _hover={{ bg: "#e89f22" }} onClick={AddProduct}>
               ADD PRODUCT
             </Button>
           </Stack>
         </Box>
         <Box w={"70%"}>
-          <SimpleGrid
-            spacing={10}
-            columns={[1, 2,3]}
-            // m={"80px auto"}
-            w={"100%"}
-          >
-            {products?.map((el: any) => (
-              <AdminProductCard key={el.id} {...el} />
+          <SimpleGrid spacing={10} columns={[1, 2, 3]} w={"100%"}>
+            {products?.map(product => (
+              <AdminProductCard key={product.id} {...product} />
             ))}
           </SimpleGrid>
         </Box>
@@ -210,9 +128,5 @@ const Products: React.FC = () => {
     </>
   );
 };
-
-// const DIV = styled.div`
-//   // Your styles here
-// `;
 
 export default Products;
